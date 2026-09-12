@@ -142,28 +142,46 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             await update.callback_query.message.reply_text(text, reply_markup=reply_markup, parse_mode="HTML")
 
+async def safe_edit_message(query, text, reply_markup=None, parse_mode="HTML"):
+    """Safely edit message without crashing on 'Message is not modified' error"""
+    try:
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+    except Exception as e:
+        if "Message is not modified" in str(e):
+            pass  # Normal when user clicks same button
+        else:
+            try:
+                await query.message.reply_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+            except Exception as e2:
+                logger.error(f"Error sending message: {e2}")
+
 async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    try:
+        await query.answer()
+    except Exception:
+        pass
+
     data = query.data
     user = update.effective_user
     user_id = user.id
 
-    # 1. Main Menu
-    if data == "main_menu":
-        await start_command(update, context)
+    try:
+        # 1. Main Menu
+        if data == "main_menu":
+            await start_command(update, context)
 
-    # 2. Support
-    elif data == "support":
-        supp_user = config.SUPPORT_USERNAME.replace("@", "")
-        text = (
-            "📞 <b>Customer Support & Assistance</b>\n\n"
-            "Agar aapko kisi bhi order ya payment mein madad chahiye to hum se contact karein:\n\n"
-            f"👤 Admin / Support: @{escape(supp_user)}\n"
-            f"🆔 Apna User ID zaroor batayein: <code>{user_id}</code>"
-        )
-        keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="main_menu")]]
-        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
+        # 2. Support
+        elif data == "support":
+            supp_user = config.SUPPORT_USERNAME.replace("@", "")
+            text = (
+                "📞 <b>Customer Support & Assistance</b>\n\n"
+                "Agar aapko kisi bhi order ya payment mein madad chahiye to hum se contact karein:\n\n"
+                f"👤 Admin / Support: @{escape(supp_user)}\n"
+                f"🆔 Apna User ID zaroor batayein: <code>{user_id}</code>"
+            )
+            keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="main_menu")]]
+            await safe_edit_message(query, text, reply_markup=InlineKeyboardMarkup(keyboard))
 
     # 3. Balance Info
     elif data == "my_balance":
@@ -439,7 +457,13 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🔄 Refresh Stats", callback_data="admin_panel")],
             [InlineKeyboardButton("🔙 Back to Store", callback_data="main_menu")]
         ]
-        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
+        await safe_edit_message(query, text, reply_markup=InlineKeyboardMarkup(keyboard))
+    except Exception as e:
+        logger.error(f"Error in callback_router: {e}", exc_info=True)
+        try:
+            await query.message.reply_text(f"⚠️ Error: {escape(str(e))}")
+        except Exception:
+            pass
 
 # ----------------- ADMIN COMMANDS ----------------- #
 
