@@ -692,7 +692,14 @@ def main():
 
     print("🚀 Initializing Toolify Reseller Telegram Bot...")
     
-    builder = ApplicationBuilder().token(config.TELEGRAM_BOT_TOKEN)
+    builder = (
+        ApplicationBuilder()
+        .token(config.TELEGRAM_BOT_TOKEN)
+        .concurrent_updates(True)  # Process all updates in parallel (zero lag)
+        .connect_timeout(10.0)
+        .read_timeout(10.0)
+        .write_timeout(10.0)
+    )
     
     if config.PROXY_URL:
         print(f"🌐 Using proxy: {config.PROXY_URL}")
@@ -721,7 +728,11 @@ def main():
     app.add_error_handler(error_handler)
 
     print("🤖 Bot started successfully! Auto-reconnect active.")
-    app.run_polling(drop_pending_updates=True, bootstrap_retries=-1, poll_interval=1.0)
+    app.run_polling(
+        drop_pending_updates=True,
+        bootstrap_retries=-1,
+        allowed_updates=Update.ALL_TYPES
+    )
 
 if __name__ == "__main__":
     main()
