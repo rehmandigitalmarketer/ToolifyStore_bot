@@ -171,17 +171,127 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if data == "main_menu":
             await start_command(update, context)
 
-        # 2. Support
-        elif data == "support":
-            supp_user = config.SUPPORT_USERNAME.replace("@", "")
-            text = (
-                "📞 <b>Customer Support & Assistance</b>\n\n"
-                "Agar aapko kisi bhi order ya payment mein madad chahiye to hum se contact karein:\n\n"
-                f"👤 Admin / Support: @{escape(supp_user)}\n"
-                f"🆔 Apna User ID zaroor batayein: <code>{user_id}</code>"
-            )
-            keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="main_menu")]]
-            await safe_edit_message(query, text, reply_markup=InlineKeyboardMarkup(keyboard))
+async def shop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Direct /shop command"""
+    PAGE_SIZE = 6
+    page = 0
+    success, products = qamify.get_products()
+    if not success or not isinstance(products, list) or not products:
+        await update.message.reply_text("📦 Filhal store mein koi products available nahi hain.", parse_mode="HTML")
+        return
+
+    total_products = len(products)
+    current_page_products = products[0:PAGE_SIZE]
+    keyboard = []
+    for p in current_page_products:
+        p_id = p.get("id")
+        p_name = p.get("name", f"Product #{p_id}")
+        stock = p.get("stock", 0)
+        cost_cents = p.get("unit_price_cents", 0)
+        sell_cents = calculate_selling_cents(cost_cents, p_id)
+        price_text = format_price(sell_cents)
+        stock_badge = f"🟢 ({stock})" if stock > 0 else "🔴 Out"
+        keyboard.append([InlineKeyboardButton(f"{p_name} | {price_text} {stock_badge}", callback_data=f"pview_{p_id}")])
+
+    if total_products > PAGE_SIZE:
+        keyboard.append([InlineKeyboardButton("Next ➡️", callback_data="products_page_1")])
+    keyboard.append([InlineKeyboardButton("🔙 Main Menu", callback_data="main_menu")])
+
+    total_pages = max(1, (total_products + PAGE_SIZE - 1) // PAGE_SIZE)
+    await update.message.reply_text(
+        f"🛍️ <b>Available Products Catalog</b> (Page 1/{total_pages}):\n"
+        "<i>Product select karein details aur buy karne ke liye:</i>",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML"
+    )
+
+async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Direct /wallet command"""
+    user = update.effective_user
+    bal_cents = db.get_user_balance(user.id)
+    text = (
+        f"💰 <b>Wallet Overview</b>\n\n"
+        f"🆔 <b>User ID:</b> <code>{user.id}</code>\n"
+        f"💵 <b>Current Balance:</b> <code>{format_price(bal_cents)}</code>\n\n"
+        "Aap balance add karke koi bhi product instantly khareed sakte hain."
+    )
+    keyboard = [
+        [InlineKeyboardButton("💳 Add Balance Now", callback_data="deposit")],
+        [InlineKeyboardButton("🔙 Main Menu", callback_data="main_menu")]
+    ]
+    await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
+
+async def orders_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Direct /orders command"""
+    user = update.effective_user
+    orders = db.get_user_orders(user.id, limit=8)
+    if not orders:
+        await update.message.reply_text(
+            "📜 Aapne abhi tak koi order place nahi kiya.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🛍️ Shop Now", callback_data="products_page_0")]]),
+            parse_mode="HTML"
+        )
+        return
+
+    text = "📜 <b>Your Recent Orders:</b>\n\n"
+    for o in orders:
+        text += (
+            f"📦 <b>{escape(o['product_name'])}</b>\n"
+            f"🔖 Code: <code>{escape(o['order_code'])}</code> | Price: <code>{format_price(o['sold_price_cents'])}</code>\n"
+            f"🔑 Key: {o['keys_delivered']}\n"
+            f"🕒 Date: <code>{escape(o['created_at'])}</code>\n"
+            "─────────────────\n"
+        )
+    keyboard = [
+        [InlineKeyboardButton("🛍️ Shop More", callback_data="products_page_0")],
+        [InlineKeyboardButton("🔙 Main Menu", callback_data="main_menu")]
+    ]
+    await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
+
+async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Direct /profile command"""
+    user = update.effective_user
+    u_data = db.get_or_create_user(user.id, user.username or "", user.first_name or "")
+    bal_cents = u_data["balance_cents"]
+    orders = db.get_user_orders(user.id, limit=100)
+    
+    text = (
+        "👤 <b>Your Account Profile:</b>\n\n"
+        f"🆔 <b>User ID:</b> <code>{user.id}</code>\n"
+        f"👤 <b>Name:</b> {escape(user.first_name)}\n"
+        f"🔗 <b>Username:</b> @{escape(user.username or 'None')}\n"
+        f"💰 <b>Wallet Balance:</b> <code>{format_price(bal_cents)}</code>\n"
+        f"📦 <b>Total Orders:</b> <code>{len(orders)}</code>\n"
+        f"📅 <b>Member Since:</b> <code>{u_data.get('created_at', 'Active')}</code>"
+    )
+    keyboard = [
+        [InlineKeyboardButton("💳 Add Balance", callback_data="deposit")],
+        [InlineKeyboardButton("📜 View Orders", callback_data="my_orders")],
+        [InlineKeyboardButton("🔙 Main Menu", callback_data="main_menu")]
+    ]
+    await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
+
+async def support_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Direct /support command"""
+    user = update.effective_user
+    supp_user = config.SUPPORT_USERNAME.replace("@", "")
+    supp_id = getattr(config, "SUPPORT_USER_ID", "8978230804")
+    text = (
+        "📞 <b>Customer Support & Assistance</b>\n\n"
+        "Agar aapko kisi bhi order ya payment mein madad chahiye to contact karein:\n\n"
+        f"👤 <b>Admin / Support:</b> @{escape(supp_user)}\n"
+        f"🆔 <b>Support User ID:</b> <code>{supp_id}</code>\n"
+        f"📌 <b>Your User ID:</b> <code>{user.id}</code>\n\n"
+        "<i>Payment screenshots aur order queries ke liye direct Telegram par rabta karein.</i>"
+    )
+    keyboard = [
+        [InlineKeyboardButton("💬 Open Support Chat", url=f"https://t.me/{supp_user}")],
+        [InlineKeyboardButton("🔙 Main Menu", callback_data="main_menu")]
+    ]
+    if update.message:
+        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
+    elif update.callback_query:
+        await safe_edit_message(update.callback_query, text, reply_markup=InlineKeyboardMarkup(keyboard))
 
     # 3. Balance Info
     elif data == "my_balance":
@@ -619,6 +729,11 @@ def main():
 
     # Commands
     app.add_handler(CommandHandler("start", start_command))
+    app.add_handler(CommandHandler("shop", shop_command))
+    app.add_handler(CommandHandler("wallet", wallet_command))
+    app.add_handler(CommandHandler("orders", orders_command))
+    app.add_handler(CommandHandler("profile", profile_command))
+    app.add_handler(CommandHandler("support", support_command))
     app.add_handler(CommandHandler("setadmin", set_admin_command))
     app.add_handler(CommandHandler("addbalance", add_balance_command))
     app.add_handler(CommandHandler("genvoucher", genvoucher_command))

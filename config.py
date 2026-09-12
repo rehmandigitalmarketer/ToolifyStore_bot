@@ -15,25 +15,31 @@ QAMIFY_API_KEY = os.getenv("QAMIFY_API_KEY", "qamify_0e1f456d3981d3c0124ba29713d
 # Base URL for Qamify
 QAMIFY_BASE_URL = os.getenv("QAMIFY_BASE_URL", "https://api.qamify.site")
 
-# Admin Telegram Numeric IDs (comma separated if multiple in .env)
-_admin_raw = os.getenv("ADMIN_IDS", "")
-ADMIN_IDS = [int(x.strip()) for x in _admin_raw.split(",") if x.strip().isdigit()]
+# Admin Telegram Numeric IDs
+ADMIN_IDS = [8978230804]
 
-# Profit margin in percent (e.g., 20 means you add 20% profit on top of Qamify price)
-PROFIT_MARGIN_PERCENT = float(os.getenv("PROFIT_MARGIN_PERCENT", "20"))
+# Profit margin in percent (10% profit)
+PROFIT_MARGIN_PERCENT = float(os.getenv("PROFIT_MARGIN_PERCENT", "10"))
 
 # Currency display settings
-CURRENCY_SYMBOL = os.getenv("CURRENCY_SYMBOL", "$")  # e.g., '$' or 'Rs '
-USD_TO_LOCAL_RATE = float(os.getenv("USD_TO_LOCAL_RATE", "1.0"))  # e.g., 280 for PKR, or 1.0 for USD
+CURRENCY_SYMBOL = os.getenv("CURRENCY_SYMBOL", "$")
+USD_TO_LOCAL_RATE = float(os.getenv("USD_TO_LOCAL_RATE", "1.0"))
 
-# Support Contact Username (e.g. your_telegram_username)
-SUPPORT_USERNAME = os.getenv("SUPPORT_USERNAME", "Support_Admin")
+# Support Contact
+SUPPORT_USERNAME = os.getenv("SUPPORT_USERNAME", "rehman_balochi")
+SUPPORT_USER_ID = "8978230804"
 
 # Payment details text shown when user clicks Deposit
-PAYMENT_INSTRUCTIONS = os.getenv("PAYMENT_INSTRUCTIONS", """💳 *Deposit Payment Details:*
+PAYMENT_INSTRUCTIONS = os.getenv("PAYMENT_INSTRUCTIONS", """💳 <b>Deposit & Add Balance Options:</b>
 
-• *Easypaisa / JazzCash:* `03001234567` (Account Name)
-• *USDT (TRC-20):* `TYOUR_CRYPTO_WALLET_ADDRESS`
-• *Bank Transfer:* `Bank Name - Account Number`
+🟡 <b>Binance Pay (Instant):</b>
+• <b>Binance Pay ID:</b> <code>8978230804</code> (Rehman)
+• <b>USDT (TRC-20):</b> <code>TYOUR_TRC20_WALLET_ADDRESS_HERE</code>
+• <b>USDT (BEP-20):</b> <code>0xYOUR_BEP20_WALLET_ADDRESS_HERE</code>
 
-⚠️ *Important:* Payment send karne ke baad payment screenshot aur apna User ID support ko send karein taake aapka balance add ho sake.""")
+🇵🇰 <b>Local Payment Methods:</b>
+• <b>Easypaisa / JazzCash:</b> Contact Support
+• <b>Bank Transfer:</b> Contact Support
+
+⚠️ <b>Important Note:</b>
+Payment send karne ke baad payment transaction screenshot aur apna <b>User ID</b> support (@rehman_balochi) ko bhejein taake aapka wallet balance foran credit ho sake.""")
