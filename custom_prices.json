@@ -1,0 +1,7 @@
+{
+  "comment": "Yahan aap kisi bhi specific Product ID ki apni fixed price (in USD Dollars ya PKR) set kar sakte hain. Agar yahan product nahi hoga to default profit margin lagega.",
+  "examples": {
+    "1": 15.00,
+    "2": 25.50
+  }
+}
