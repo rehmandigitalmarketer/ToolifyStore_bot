@@ -154,7 +154,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def shop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Direct /shop command"""
     PAGE_SIZE = 6
-    success, products = qamify.get_products()
+    success, products = await qamify.get_products()
     if not success or not isinstance(products, list) or not products:
         await update.message.reply_text("📦 Filhal store mein koi products available nahi hain.", parse_mode="HTML")
         return
@@ -367,7 +367,7 @@ async def check_qamify_balance_command(update: Update, context: ContextTypes.DEF
     if user_id not in config.ADMIN_IDS:
         return
 
-    is_ok, res = qamify.get_balance()
+    is_ok, res = await qamify.get_balance()
     if is_ok:
         bal_cents = res.get("balance_cents", 0)
         await update.message.reply_text(f"🌐 <b>Qamify Reseller Balance:</b> <code>${bal_cents/100:.2f}</code> ({bal_cents} cents)", parse_mode="HTML")
@@ -450,7 +450,7 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
             page = int(data.split("_")[-1])
             PAGE_SIZE = 6
 
-            success, products = qamify.get_products()
+            success, products = await qamify.get_products()
             if not success or not isinstance(products, list) or not products:
                 err_msg = products.get("error", "API Connection Error") if isinstance(products, dict) else "No Products Found"
                 await safe_edit_message(
@@ -500,7 +500,7 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # 6. View Single Product
         elif data.startswith("pview_"):
             product_id = int(data.split("_")[1])
-            _, all_p = qamify.get_products()
+            _, all_p = await qamify.get_products()
             p = next((item for item in all_p if item.get("id") == product_id), None) if isinstance(all_p, list) else None
 
             if not p:
@@ -535,7 +535,7 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # 7. Buy Product Confirmation & Execution
         elif data.startswith("pbuy_"):
             product_id = int(data.split("_")[1])
-            _, all_p = qamify.get_products()
+            _, all_p = await qamify.get_products()
             p = next((item for item in all_p if item.get("id") == product_id), None) if isinstance(all_p, list) else None
 
             if not p:
@@ -571,7 +571,7 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             await safe_edit_message(query, "⏳ <b>Purchasing license key from server, please wait...</b>")
 
-            order_success, order_res = qamify.place_order(product_id=product_id, qty=1)
+            order_success, order_res = await qamify.place_order(product_id=product_id, qty=1)
 
             if order_success:
                 keys = order_res.get("keys", [])
@@ -651,7 +651,7 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
 
             stats = db.get_stats()
-            is_ok, qbal = qamify.get_balance()
+            is_ok, qbal = await qamify.get_balance()
             qbal_str = f"${(qbal.get('balance_cents', 0)/100):.2f}" if is_ok else "Error fetching"
 
             text = (
