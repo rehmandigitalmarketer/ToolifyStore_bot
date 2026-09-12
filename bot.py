@@ -677,7 +677,11 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Error in callback_router: {e}", exc_info=True)
 
 # ----------------- GLOBAL ERROR HANDLER ----------------- #
+# ----------------- GLOBAL ERROR HANDLER ----------------- #
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if isinstance(context.error, Exception) and "Conflict" in str(context.error):
+        logger.warning("Telegram Conflict detected during container transition. Reconnecting automatically...")
+        return
     logger.error("Exception while handling an update:", exc_info=context.error)
 
 # ----------------- MAIN RUNNER ----------------- #
@@ -716,8 +720,8 @@ def main():
     # Global error handler
     app.add_error_handler(error_handler)
 
-    print("🤖 Bot started successfully! Press Ctrl+C to stop.")
-    app.run_polling()
+    print("🤖 Bot started successfully! Auto-reconnect active.")
+    app.run_polling(drop_pending_updates=True, bootstrap_retries=-1, poll_interval=1.0)
 
 if __name__ == "__main__":
     main()
